@@ -1,24 +1,28 @@
-# This configuration defines two separate services:
-# 1. The Dynamic Python Backend (FastAPI)
-# 2. The Static Frontend (Vue.js build assets)
+# This configuration defines a single web service (FastAPI backend)
+# and uses a custom build script to compile and serve the Vue frontend
+# alongside the Python application, resolving the "unknown type" error.
 
 services:
-  # ----------------------------------------------------
-  # 1. DYNAMIC WEB SERVICE (FastAPI Backend)
-  # ----------------------------------------------------
   - type: web
-    name: wotnot-backend
+    name: wotnot-ai-crm
     
-    # Path to the directory containing your Python code
-    rootDir: ./backend
+    # Render will use the root directory as the build context for simplicity.
+    rootDir: .
     
     env: python
-    buildCommand: "pip install -r requirements.txt"
     
-    # This command starts your server.
-    startCommand: "uvicorn wati.main:app --host 0.0.0.0 --port $PORT"
+    # 1. Custom Build Command: Installs Node, builds Vue, then installs Python.
+    # We rely on a custom script to handle the Python/Node compilation sequence.
+    buildCommand: "./build.sh"
     
-    # Environment Variables (Set these securely in the Render dashboard)
+    # 2. Start Command: Starts the Uvicorn server.
+    startCommand: "uvicorn backend.wati.main:app --host 0.0.0.0 --port $PORT"
+    
+    # 3. Static File Path: Points to the final compiled assets from the Vue build.
+    # This tells Render to serve these files from the root URL.
+    staticPublishPath: ./frontend/my-vue-app/dist
+    
+    # Environment Variables
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.3 
@@ -26,25 +30,7 @@ services:
         sync: false 
       - key: DATABASE_URL 
         sync: false 
-        
-  # ----------------------------------------------------
-  # 2. STATIC SITE SERVICE (Vue.js Frontend)
-  # ----------------------------------------------------
-  - type: static
-    name: wotnot-frontend
-    
-    # Path to the directory containing your package.json
-    rootDir: ./frontend/my-vue-app 
-    
-    # Command to compile the Vue application (creates the final /dist folder)
-    buildCommand: "npm install && npm run build"
-    
-    # The directory where Vue places the final static files to be served
-    # This MUST be relative to the rootDir (./frontend/my-vue-app)
-    publishPath: ./dist
-    
-    # This environment variable tells the compiled Vue app where the backend is.
-    # Render automatically handles the proxying from the frontend to the backend service.
-    envVars:
-      - key: VUE_APP_API_URL
-        value: /api 
+      
+      # Tell the frontend where the backend API is (relative path works best on Render)
+      - key: VUE_APP_API_URL 
+        value: /api
