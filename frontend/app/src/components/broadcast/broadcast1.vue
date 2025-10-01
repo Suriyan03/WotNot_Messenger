@@ -3,15 +3,11 @@
     <div class="flex flex-col md:flex-row justify-between mb-4 border-b pb-5">
       <div>
         <h2 class="text-xl md:text-2xl font-bold">Manage Templates</h2>
-
         <p class="text-sm md:text-base">Your content for scheduled broadcasts goes here.</p>
       </div>
 
-      <div>
-        <!-- <button @click="showPopup = true"
-          class="text-[#f5f6fa] px-4 py-2 md:px-4 md:py-4 text-sm md:text-base w-full md:w-auto">
-          Create New Template
-        </button> -->
+      <div class="flex space-x-4">
+        <!-- The original NEW TEMPLATE button remains the only top-level action button -->
         <button
           class="bg-green-700 text-white px-6 py-3 rounded-lg shadow-lg font-medium flex items-center justify-center hover:from-[#078478] hover:via-[#08b496] hover:to-[#078478] transition-all duration-300"
           @click="showPopup = true">
@@ -21,15 +17,82 @@
           </svg>
           New Template
         </button>
-
       </div>
     </div>
 
+    <!-- Template List Display (No changes here) -->
+
+    <!-- AI GENERATOR SECTION START -->
+              <h4 class="text-green-800 mt-4"><b>Message Generator</b></h4>
+              <p class="text-sm mb-2 ">Generate and edit content using our AI assistant.</p>
+              
+              <div class="bg-[#e0f2f1] p-4 rounded-md mb-4 flex flex-col space-y-3">
+                  <label class="block text-sm font-medium">Enter your message prompt:</label>
+                  <div class="flex space-x-2">
+                      <input 
+                          v-model="promptText" 
+                          type="text" 
+                          placeholder="e.g., Send a Diwali wish to my customers" 
+                          class="p-2 border border-gray-300 rounded-md flex-grow"
+                      />
+                      
+                  </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-4 bg-[#e0f2f1] p-4 rounded-md mb-4">
+                  <!-- Placeholders Input -->
+                  <div>
+                      <label class="block text-sm font-medium">Placeholders (comma-separated):</label>
+                      <input 
+                          v-model="placeholderList" 
+                          type="text" 
+                          placeholder="e.g., {name}, {order_id}" 
+                          class="p-2 border border-gray-300 rounded-md w-full"
+                      />
+                  </div>
+
+                  <!-- Audience Input -->
+                  <div>
+                      <label class="block text-sm font-medium">Audience:</label>
+                      <input 
+                          v-model="audienceDescription" 
+                          type="text" 
+                          placeholder="e.g., loyal customers, new sign-ups" 
+                          class="p-2 border border-gray-300 rounded-md w-full"
+                      />
+                  </div>
+
+                  <!-- Tone Select -->
+                  <div>
+                      <label class="block text-sm font-medium">Tone:</label>
+                      <select v-model="selectedTone" class="p-2 border border-gray-300 rounded-md w-full">
+                          <option value="Professional">Professional</option>
+                          <option value="Informal">Informal</option>
+                          <option value="Cheerful">Cheerful</option>
+                      </select>
+                  </div>
+
+                   <!-- Length Select (Placeholder for now) -->
+                  <div>
+                      <label class="block text-sm font-medium">Length:</label>
+                      <select v-model="selectedLength" class="p-2 border border-gray-300 rounded-md w-full">
+                          <option value="short">Short (1-2 sentences)</option>
+                          <option value="medium">Medium (3-4 sentences)</option>
+                          <option value="long">Long (5+ sentences)</option>
+                      </select>
+                  </div>
+                  <button 
+                          @click.prevent="generateMessage" 
+                          :disabled="isGenerating || !promptText" 
+                          class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all duration-300 w-auto flex items-center justify-center font-semibold"
+                      >
+                          <i class="bi bi-magic mr-2"></i> {{ isGenerating ? 'Generating...' : 'Generate Content' }}
+                      </button>
+              </div>
+              <!-- AI GENERATOR SECTION END -->
     <h3 class="text-xl md:text-2xs mb-4 text-gray-600"><b>Template List</b><span v-if="cursor"
         class="ml-5 w-5 h-5 border-2 border-green-500 border-t-transparent rounded-full animate-spin inline-block"></span>
     </h3>
-
-
     <div class="overflow-x-auto max-h-[55vh] custom-scrollbar mb-2">
       <table class="w-full border border-gray-300 rounded-lg text-sm md:text-base bg-white"
         :class="{ 'opacity-50 pointer-events-none': tableLoading }">
@@ -74,30 +137,23 @@
                 </lord-icon>
               </button>
             </td>
-            
-              
-            
-           
           </tr>
         </tbody>
       </table>
     </div>
 
-
-
     <confirmationPopup  v-if="showConfirmPopup" @yes="deleteTemplate(deleteTemplateName)" @no="showConfirmPopup = false" @close="showConfirmPopup = false" />
 
     <PopUp_preview v-if="showPreview" @close="closePreview">
-
       <div
         class="flex flex-col aspect-[10/19] p-3 max-h-[670px] bg-[url('@/assets/chat-bg.jpg')] bg-cover bg-center custom-scrollbar">
         <div class="message">
           <span style="white-space: pre-line;" v-html="preview_data"></span>
         </div>
       </div>
-
     </PopUp_preview>
 
+    <!-- Main Template Creation Popup -->
     <PopUp v-if="showPopup" @close="closePopup"
       class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 custom-scrollbar">
 
@@ -111,7 +167,7 @@
 
         <div class="flex ">
           <div class="mr-4 max-h-[600px] overflow-y-auto custom-scrollbar">
-            <form class="p-4" :class="{ 'opacity-50 pointer-events-none': isSubmitted }">
+            <form class="p-4" @submit.prevent="submitTemplate" :class="{ 'opacity-50 pointer-events-none': isSubmitted }">
               <h4 class="text-green-800"><b>Template name and language</b></h4>
               <p class="text-sm mb-2 ">Categorize your template</p>
               <div class="grid grid-cols-3 gap-4 bg-[#f5f6fa] p-4 mb-2">
@@ -122,7 +178,7 @@
                   <div class="relative mb-2">
                     <input v-model="template.name" :placeholder="'Template Name'"
                       @blur="validateTemplateName" class="mt-1 p-2 w-full border border-gray-300 rounded-md h-10" required />
-                                    <span v-if="nameError" class="text-red-500 text-xs absolute top-full left-0 mt-1">
+                      <span v-if="nameError" class="text-red-500 text-xs absolute top-full left-0 mt-1">
                       {{ nameError }}</span>
                   </div>
                 </div>
@@ -141,78 +197,7 @@
                   <label class="block text-sm font-medium">Language<span class="text-red-800">*</span></label>
                   <select v-model="selectedLanguage" class="mt-1 p-2 w-full border border-gray-300 rounded-md h-10"
                     required>
-                    <option value="af">Afrikaans</option>
-                    <option value="sq">Albanian</option>
-                    <option value="ar">Arabic</option>
-                    <option value="az">Azerbaijani</option>
-                    <option value="bn">Bengali</option>
-                    <option value="bg">Bulgarian</option>
-                    <option value="ca">Catalan</option>
-                    <option value="zh_CN">Chinese (Simplified)</option>
-                    <option value="zh_HK">Chinese (Hong Kong)</option>
-                    <option value="zh_TW">Chinese (Taiwan)</option>
-                    <option value="hr">Croatian</option>
-                    <option value="cs">Czech</option>
-                    <option value="da">Danish</option>
-                    <option value="nl">Dutch</option>
-                    <option value="en">English</option>
-                    <option value="en_GB">English (UK)</option>
-                    <option value="en_US" default>English (US)</option>
-                    <option value="et">Estonian</option>
-                    <option value="fil">Filipino</option>
-                    <option value="fi">Finnish</option>
-                    <option value="fr">French</option>
-                    <option value="ka">Georgian</option>
-                    <option value="de">German</option>
-                    <option value="el">Greek</option>
-                    <option value="gu">Gujarati</option>
-                    <option value="ha">Hausa</option>
-                    <option value="he">Hebrew</option>
-                    <option value="hi">Hindi</option>
-                    <option value="hu">Hungarian</option>
-                    <option value="id">Indonesian</option>
-                    <option value="ga">Irish</option>
-                    <option value="it">Italian</option>
-                    <option value="ja">Japanese</option>
-                    <option value="kn">Kannada</option>
-                    <option value="kk">Kazakh</option>
-                    <option value="rw_RW">Kinyarwanda</option>
-                    <option value="ko">Korean</option>
-                    <option value="ky_KG">Kyrgyz (Kyrgyzstan)</option>
-                    <option value="lo">Lao</option>
-                    <option value="lv">Latvian</option>
-                    <option value="lt">Lithuanian</option>
-                    <option value="mk">Macedonian</option>
-                    <option value="ms">Malay</option>
-                    <option value="ml">Malayalam</option>
-                    <option value="mr">Marathi</option>
-                    <option value="nb">Norwegian</option>
-                    <option value="fa">Persian</option>
-                    <option value="pl">Polish</option>
-                    <option value="pt_BR">Portuguese (Brazil)</option>
-                    <option value="pt_PT">Portuguese (Portugal)</option>
-                    <option value="pa">Punjabi</option>
-                    <option value="ro">Romanian</option>
-                    <option value="ru">Russian</option>
-                    <option value="sr">Serbian</option>
-                    <option value="sk">Slovak</option>
-                    <option value="sl">Slovenian</option>
-                    <option value="es">Spanish</option>
-                    <option value="es_AR">Spanish (Argentina)</option>
-                    <option value="es_ES">Spanish (Spain)</option>
-                    <option value="es_MX">Spanish (Mexico)</option>
-                    <option value="sw">Swahili</option>
-                    <option value="sv">Swedish</option>
-                    <option value="ta">Tamil</option>
-                    <option value="te">Telugu</option>
-                    <option value="th">Thai</option>
-                    <option value="tr">Turkish</option>
-                    <option value="uk">Ukrainian</option>
-                    <option value="ur">Urdu</option>
-                    <option value="uz">Uzbek</option>
-                    <option value="vi">Vietnamese</option>
-                    <option value="zu">Zulu</option>
-                    <!-- Add other languages here -->
+                    <option value="af">Afrikaans</option><option value="sq">Albanian</option><option value="ar">Arabic</option><option value="az">Azerbaijani</option><option value="bn">Bengali</option><option value="bg">Bulgarian</option><option value="ca">Catalan</option><option value="zh_CN">Chinese (Simplified)</option><option value="zh_HK">Chinese (Hong Kong)</option><option value="zh_TW">Chinese (Taiwan)</option><option value="hr">Croatian</option><option value="cs">Czech</option><option value="da">Danish</option><option value="nl">Dutch</option><option value="en">English</option><option value="en_GB">English (UK)</option><option value="en_US" default>English (US)</option><option value="et">Estonian</option><option value="fil">Filipino</option><option value="fi">Finnish</option><option value="fr">French</option><option value="ka">Georgian</option><option value="de">German</option><option value="el">Greek</option><option value="gu">Gujarati</option><option value="ha">Hausa</option><option value="he">Hebrew</option><option value="hi">Hindi</option><option value="hu">Hungarian</option><option value="id">Indonesian</option><option value="ga">Irish</option><option value="it">Italian</option><option value="ja">Japanese</option><option value="kn">Kannada</option><option value="kk">Kazakh</option><option value="rw_RW">Kinyarwanda</option><option value="ko">Korean</option><option value="ky_KG">Kyrgyz (Kyrgyzstan)</option><option value="lo">Lao</option><option value="lv">Latvian</option><option value="lt">Lithuanian</option><option value="mk">Macedonian</option><option value="ms">Malay</option><option value="ml">Malayalam</option><option value="mr">Marathi</option><option value="nb">Norwegian</option><option value="fa">Persian</option><option value="pl">Polish</option><option value="pt_BR">Portuguese (Brazil)</option><option value="pt_PT">Portuguese (Portugal)</option><option value="pa">Punjabi</option><option value="ro">Romanian</option><option value="ru">Russian</option><option value="sr">Serbian</option><option value="sk">Slovak</option><option value="sl">Slovenian</option><option value="es">Spanish</option><option value="es_AR">Spanish (Argentina)</option><option value="es_ES">Spanish (Spain)</option><option value="es_MX">Spanish (Mexico)</option><option value="sw">Swahili</option><option value="sv">Swedish</option><option value="ta">Tamil</option><option value="te">Telugu</option><option value="th">Thai</option><option value="tr">Turkish</option><option value="uk">Ukrainian</option><option value="ur">Urdu</option><option value="uz">Uzbek</option><option value="vi">Vietnamese</option><option value="zu">Zulu</option>
                   </select>
                 </div>
 
@@ -232,7 +217,6 @@
                     <option value="TEXT">Text</option>
                     <option value="IMAGE">Image</option>
                     <option value="VIDEO">Video</option>
-
                   </select>
 
                   <div v-if="headerMediaComponent.format === 'TEXT'">
@@ -257,7 +241,7 @@
                   <label class="block text-sm font-medium">Body<span class="text-red-800">*</span></label>
 
                   <textarea v-model="bodyComponent.text" class="mt-1 p-2 w-full border border-gray-300 rounded-md h-30"
-                    placeholder="Enter text" rows="4" required></textarea>
+                    placeholder="Enter text (generated message will go here)" rows="4" required></textarea>
 
                   <div v-if="warningData"
                     class="mt-2 p-3 bg-yellow-100 text-yellow-800 text-sm rounded-md border border-yellow-300">
@@ -265,38 +249,17 @@
                   </div>
                 </div>
 
-                <!-- <div class="quill-editor-wrapper">
-                                  <QuillEditor class="quill-custom mt-1 p-2 w-full rounded-md h-60 bg-white"
-                                   ref="myQuillEditor"
-                  v-model:content="bodyComponent.text" contentType="html" theme="snow" :toolbar="[
-                    ['bold', 'italic', 'underline']
-                  ]" placeholder="Start typing your content here..." />
-
-                </div> -->
-
-
-
                 <div class="flex items=flex-end justify-end">
                   <button type="button" @click="addVariable" class="text-black p-2 text-xs font-bold hover:bg-gray-200">
                     + Add variable
                   </button>
                 </div>
 
-
-
-                <!-- <div v-if="variableCounter">
-                <h4>Variable Examples</h4>
-                <div v-for="index in variableCounter" :key="index">
-                  <input type="text" :placeholder="'Variable ' + index" v-model="variables[index - 1]"
-                    class="border border-[#ddd] p-2 rounded-md w-50px mb-2" />
-                </div>
-              </div> -->
-
                 <div v-if="variables.length">
 
                   <h4></h4>
                   <label class="block text-sm font-medium">Samples for body content<span class="text-red-800">*</span></label>
-                  <span class="text-sm text-gray-500">To help us review your message template, please add an example for each variable in your body text. Do not use real customer information. Cloud API hosted by Meta reviews templates and variable parameters to protect the security and integrity of our services.</span>
+                  <span class="text-sm text-gray-500">To help us review your message template, please add an example for each variable in your body text. Do not use real customer information.</span>
                   
                   <div v-for="(variable, index) in variables" :key="index">
                     <input type="text" :placeholder="'Variable ' + (index + 1)" v-model="variables[index]"
@@ -316,25 +279,23 @@
               <p class="text-sm mb-2 ">Create buttons that let customers respond to your message or take action.</p>
               <div class="bg-[#f5f6fa] p-4 ">
                   <span>
-                  <button class="text-black p-2 text-small border border-black hover:bg-gray-200"
-                    @click.prevent="addbutton">
-                     + Add Button
-                  </button>
-                </span>
-                <!-- Button Text and URL Inputs -->
-                 <div class="mt-2">
-                                  <input v-if="addButton && selectedSubCategory !== 'ORDER_STATUS'" v-model="button.text"
-                  placeholder="Text" class="border border-[#ddd] p-2 rounded-md w-full mb-2" />
-                <input v-if="addButton && selectedSubCategory !== 'ORDER_STATUS'" v-model="button.url"
-                  placeholder="URL" class="border border-[#ddd] p-2 rounded-md w-full mb-2" />
-                 </div>
-
+                    <button class="text-black p-2 text-small border border-black hover:bg-gray-200"
+                      @click.prevent="addbutton">
+                      + Add Button
+                    </button>
+                  </span>
+                  <div class="mt-2">
+                    <input v-if="addButton && selectedSubCategory !== 'ORDER_STATUS'" v-model="button.text"
+                      placeholder="Text" class="border border-[#ddd] p-2 rounded-md w-full mb-2" />
+                    <input v-if="addButton && selectedSubCategory !== 'ORDER_STATUS'" v-model="button.url"
+                      placeholder="URL" class="border border-[#ddd] p-2 rounded-md w-full mb-2" />
+                  </div>
               </div>
 
 
               <!-- Actions -->
 
-              <button @click.prevent="submitTemplate"
+              <button type="submit"
                 class="bg-green-700 mt-4 text-white px-6 py-3 rounded-lg shadow-lg font-medium flex items-center justify-center "
                 :disabled="loading || isSubmitted">
                 <span v-if="loading"
@@ -364,21 +325,19 @@
 
 <script>
 
-// import { QuillEditor } from '@vueup/vue-quill';
-// import '@vueup/vue-quill/dist/vue-quill.snow.css';
 import axios from 'axios';
 import PopUp from "../popups/popup";
 import { useToast } from 'vue-toastification';
 import PopUp_preview from "../popups/template_preview";
 import confirmationPopup from '../popups/confirmation';
+// import MessageGeneratorModal from '../popups/MessageGeneratorModal.vue'; // NO LONGER NEEDED
 
 export default {
   components: {
-    // QuillEditor,
-    
     PopUp_preview,
     confirmationPopup,
-    PopUp
+    PopUp,
+    // MessageGeneratorModal,
   },
   name: 'BroadCast1',
   props: {
@@ -389,7 +348,6 @@ export default {
   },
   data() {
     return {
-
       cursor: false,
       apiUrl: process.env.VUE_APP_API_URL,
       selectedFile: null,
@@ -397,23 +355,13 @@ export default {
       uploadResponse: null,
       uploadError: null,
       uploadHandleID: null,
-      deleteTemplateName: '', // To store the name of the template to be deleted
-      showConfirmPopup: false, // State to control the confirmation popup visibility
-
-      // loading
-      loading: false, // Add loading state
+      deleteTemplateName: '',
+      showConfirmPopup: false,
+      loading: false,
       isSubmitted: false,
       tableLoading: false,
-
       showPreview: false,
       preview_data: '',
-      tooltipVisible: false,
-      tooltipStyles: {
-        top: "0px",
-        left: "0px",
-        width: "170px", // Set square dimensions
-        height: "100px",
-      },
       templateName: '',
       isTemplateNameValid: true,
       templates: [],
@@ -459,16 +407,22 @@ export default {
 
       variableCounter: null,
       variables: [],
-      warningData: null, // To store error data from the API
+      warningData: null,
+      
+      // --- NEW AI STATE ---
+      promptText: '', 
+      isGenerating: false, 
+      placeholderList: '',     // NEW: Stores comma-separated placeholders
+      audienceDescription: '', // NEW: Describes the audience
+      selectedTone: 'Professional', // NEW: Stores the selected tone
+      selectedLength: 'short',     // NEW: Stores the selected length
+      // --------------------
     };
   },
 
 
-
   async mounted() {
     await this.fetchtemplateList();
-
-    // this.preview_data = this.generateTemplatePreview(this.template.components);
 
     const script = document.createElement('script');
     script.src = "https://cdn.lordicon.com/lordicon.js";
@@ -477,36 +431,78 @@ export default {
 
   methods: {
 
-      async showConfirmationPopup(templateName) {
-    this.showConfirmPopup = true;
-    this.deleteTemplateName = templateName; // Store the template name to be deleted
-     // Store the template name to be deleted
-  },
+    // --- NEW GENERATOR METHOD ---
+    // Inside methods: { ... }
+
+// --- NEW GENERATOR METHOD ---
+async generateMessage() {
+    const toast = useToast();
+    if (!this.promptText || this.isGenerating) return;
+
+    this.isGenerating = true;
+    
+    // IMPORTANT: Use access_token key for Authorization header
+    const token = localStorage.getItem('access_token');
+    
+    // --- BUILD THE CONTEXTUAL PROMPT ---
+    const context = `
+        You are an expert message assistant generating a concise WhatsApp broadcast message.
+        - **Content Focus:** ${this.promptText}
+        - **Audience:** ${this.audienceDescription || 'General WhatsApp audience'}
+        - **Tone:** ${this.selectedTone}
+        - **Length:** ${this.selectedLength}
+        - **Placeholders to use:** ${this.placeholderList || 'No specific placeholders are required.'}
+        
+        The final output MUST be the clean message text only, without any introductory phrases, headers, or external text. 
+        Example Output: "Hello {name}, your order #{order_id} has shipped! Happy Diwali!"
+    `;
+    // ------------------------------------
+    
+    try {
+        const response = await axios.post(
+            `${this.apiUrl}/user/generate-message/`, 
+            { prompt: context }, // Send the rich context to the backend
+            { headers: { 'Authorization': `Bearer ${token}` } }
+        );
+
+        if (response.status === 200) {
+            // Inject the generated message into the main template body
+            const generatedMessage = response.data.message || "Message generation failed. The AI returned empty content.";
+            
+            // CRITICAL STEP: Inject text into the main message area for tweaking
+            this.bodyComponent.text = generatedMessage.trim(); 
+            
+            toast.success("Content generated and ready for tweaking!");
+        } else {
+            toast.error("AI service returned an error.");
+        }
+        
+    } catch (error) {
+        // Log the full error to the console for debugging
+        console.error("AI Message Generation Failed:", error.response?.data || error.message);
+        
+        const errorMessage = error.response?.data?.detail || error.message;
+        toast.error(`Generation failed: ${errorMessage}`);
+    } finally {
+        this.isGenerating = false;
+    }
+},
+// ... rest of your existing methods ...
+    // ----------------------------
+
+    async showConfirmationPopup(templateName) {
+      this.showConfirmPopup = true;
+      this.deleteTemplateName = templateName;
+    },
 
     addVariable() {
-      // const countWords = (text) => {
-      //   if (!text) return 0;
-      //   return text.split(/\s+/).filter(word => word.trim().length > 0).length;
-      // };
-
       const text = this.bodyComponent.text || '';
-      // const wordCount = countWords(text);
-
       const currentVariables = text.match(/{{\d+}}/g) || [];
-      // const requiredWords = 3 * (currentVariables.length + 1);
-
-      // if (wordCount < requiredWords) {
-      //   alert(`The text must have at least ${requiredWords} words to add ${currentVariables.length + 1} variables.`);
-      //   return;
-      // }
-
       const nextVariableNumber = currentVariables.length + 1;
       this.bodyComponent.text += ` {{${nextVariableNumber}}}`;
 
-      // 🔧 Update both
       this.variableCounter = nextVariableNumber;
 
-      // 🔧 Extend `variables` array safely
       while (this.variables.length < nextVariableNumber) {
         this.variables.push("");
       }
@@ -514,58 +510,6 @@ export default {
       console.log("Updated variable counter:", this.variableCounter);
       console.log("Updated variables:", this.variables);
     },
-
-
-    //  addVariable() {
-    //   const nextVariableNumber = (this.bodyComponent.text.match(/{{\d+}}/g) || []).length + 1;
-    //   const variableToInsert = ` {{${nextVariableNumber}}}`;
-
-    //   // 1. Get the Quill editor instance using the ref
-    //   const quill = this.$refs.myQuillEditor.quill;
-
-    //   if (quill) {
-    //     // 2. Get the current cursor selection
-    //     const selection = quill.getSelection();
-
-    //     if (selection) {
-    //       // If there's a selection, insert the text at the current cursor position
-    //       quill.insertText(selection.index, variableToInsert, 'user');
-    //       // Move the cursor after the inserted text
-    //       quill.setSelection(selection.index + variableToInsert.length, 0);
-    //     } else {
-    //       // If no selection (e.g., editor not focused), append to the end
-    //       quill.insertText(quill.getLength(), variableToInsert, 'user');
-    //       // Move the cursor to the very end
-    //       quill.setSelection(quill.getLength(), 0);
-    //     }
-
-    //     // 3. Update your internal data properties
-    //     this.variableCounter = nextVariableNumber;
-
-    //     // Extend `variables` array safely
-    //     while (this.variables.length < nextVariableNumber) {
-    //       this.variables.push("");
-    //     }
-
-    //     console.log("Updated variable counter:", this.variableCounter);
-    //     console.log("Updated variables:", this.variables);
-
-    //     // Optional: If this.bodyComponent.text is bound with 'contentType="text"',
-    //     // update it from Quill's content after insertion to keep them in sync.
-    //     // If using 'html' or 'delta', v-model should handle most sync automatically,
-    //     // but for immediate plain text reflection, you might still need this.
-    //     // This will only update the text representation, not the rich text.
-    //     this.bodyComponent.text = quill.getText();
-
-    //   } else {
-    //     console.error("Quill editor instance not found. Make sure the ref is set correctly and the editor is mounted.");
-    //     // Fallback or error handling if Quill instance isn't available
-    //     // (though this is less likely if ref is correctly used)
-    //     this.bodyComponent.text += variableToInsert;
-    //   }
-    // },
-
-
 
 
     showpreview(preview) {
@@ -579,7 +523,7 @@ export default {
 
     openPopup() {
       this.showPopup = true;
-      this.selectedType = 'MARKETING';  // Ensure Marketing is default when opening
+      this.selectedType = 'MARKETING';
     },
 
 
@@ -603,7 +547,6 @@ export default {
         this.templates = templatelist.data;
         this.cursor = false;
 
-        // Generate previews for templates
         this.templates = this.templates.map(template => {
           return {
             ...template,
@@ -620,7 +563,7 @@ export default {
 
       if (!Array.isArray(components)) {
         console.warn("generateTemplatePreview: components is not an array", components);
-        return ''; // Return an empty string instead of breaking the app
+        return '';
       }
       let previewMessage = '';
 
@@ -630,7 +573,6 @@ export default {
       });
 
 
-      // Loop through components and construct the preview message
       components.forEach(component => {
         switch (component.type) {
           case 'HEADER': {
@@ -639,7 +581,7 @@ export default {
             } else if (component.format === 'IMAGE' && component.example?.header_handle) {
               previewMessage += `<div style="width: auto; height: 200px; overflow: hidden; position: relative; border-radius: 5px">
   <img src="${component.example.header_handle[0]}" alt="Description of image" 
-       style="width: 100%; height: 100%; object-fit: cover; object-position: start; display: block ; border-radius: 4px">
+        style="width: 100%; height: 100%; object-fit: cover; object-position: start; display: block ; border-radius: 4px">
 </div>`;
 
             }
@@ -657,7 +599,6 @@ export default {
           }
           case 'BODY': {
             let bodyText = component.text;
-            // Check if the body contains dynamic placeholders like {{1}}
             bodyText = this.replacePlaceholders(bodyText, component.example?.body_text);
             previewMessage += bodyText;
 
@@ -673,24 +614,24 @@ export default {
               component.buttons.forEach(button => {
                 if (button.type === 'URL') {
                   previewMessage += `
-          <a href="${button.url}" target="_blank" 
-             style="display: inline-flex; align-items: center; 
-                    text-decoration: none; font-weight: bold; color: #007bff; 
-                     border-top: 1px solid #ddd;">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="#007bff" width="19" height="19" viewBox="0 0 24 24" style="margin-right: 5px;">
-              <path d="M14 3v2h3.586l-8.293 8.293 1.414 1.414 8.293-8.293v3.586h2v-7h-7z"/>
-              <path d="M5 5h6v-2h-6c-1.103 0-2 .897-2 2v14c0 1.103.897 2 2 2h14c1.103 0 2-.897 2-2v-6h-2v6h-14v-14z"/>
-            </svg>
-            <span style="padding:5px">${button.text}</span>
-            
-          </a>`;
+            <a href="${button.url}" target="_blank" 
+              style="display: inline-flex; align-items: center; 
+                      text-decoration: none; font-weight: bold; color: #007bff; 
+                      border-top: 1px solid #ddd;">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="#007bff" width="19" height="19" viewBox="0 0 24 24" style="margin-right: 5px;">
+                <path d="M14 3v2h3.586l-8.293 8.293 1.414 1.414 8.293-8.293v3.586h2v-7h-7z"/>
+                <path d="M5 5h6v-2h-6c-1.103 0-2 .897-2 2v14c0 1.103.897 2 2 2h14c1.103 0 2-.897 2-2v-6h-2v6h-14v-14z"/>
+              </svg>
+              <span style="padding:5px">${button.text}</span>
+              
+            </a>`;
                 } else if (button.type === 'REPLY') {
                   previewMessage += `
-          <button style="display: inline-block; margin: 5px 0; padding: 10px 15px; 
-                         background-color: #007bff; color: white; border: none; 
-                         border-radius: 20px; cursor: pointer; font-weight: bold;">
-            ${button.text}
-          </button>`;
+            <button style="display: inline-block; margin: 5px 0; padding: 10px 15px; 
+                          background-color: #007bff; color: white; border: none; 
+                          border-radius: 20px; cursor: pointer; font-weight: bold;">
+              ${button.text}
+            </button>`;
                 }
               });
               previewMessage += `</div>`;
@@ -709,9 +650,6 @@ export default {
     },
 
 
-
-
-
     replacePlaceholders(bodyText, example) {
       if (!bodyText || !Array.isArray(example) || example.length === 0) return bodyText;
 
@@ -725,10 +663,6 @@ export default {
 
       return bodyText;
     },
-
-
-
-
 
 
     updateTemplateComponents() {
@@ -766,16 +700,15 @@ export default {
       }
 
       this.template.components = components;
-      console.log(this.template); // Update template components dynamically
     },
 
     async submitTemplate() {
       const toast = useToast();
       if (this.nameError) {
-        return; // Prevent form submission if there are validation errors
+        return;
       }
 
-      this.loading = true; // Show loading indicator
+      this.loading = true;
 
       const payload = {
         name: this.template.name,
@@ -785,7 +718,7 @@ export default {
         sub_category: this.selectedSubCategory
       };
 
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('access_token');
 
       if (!token) {
         console.error('No access token found in local storage');
@@ -809,48 +742,43 @@ export default {
         } else {
           const errorMessage = response.data.detail || "Unknown error occurred";
           
-          // alert(`Error creating template: ${errorMessage}`);
           toast.error(`Error creating template: ${errorMessage}`);
           console.error('Error creating template:', response.data.detail);
         }
       } catch (error) {
-        // Handle network errors
         const errorMessage = error.response?.data?.detail?.error?.error_user_msg || error.response?.data?.detail?.error?.message || error.message;
         toast.error(`Request failed: ${errorMessage}`);
-        // alert(`Request failed: ${errorMessage}`);
         console.error('Request failed:', error);
       }
       finally {
 
-        this.loading = false; // Hide loading indicator
+        this.loading = false;
       }
     },
 
 
-    // 
-validateTemplateName() {
-  // Convert to lowercase, replace spaces with underscores, and trim whitespace
-  this.template.name = this.template.name
-    .toLowerCase()
-    .replace(/\s+/g, '_')       // replace spaces with underscores
-    .trim();                    // remove leading/trailing whitespace
+    validateTemplateName() {
+      this.template.name = this.template.name
+        .toLowerCase()
+        .replace(/\s+/g, '_')
+        .trim();
 
-  const regex = /^[a-z_0-9]+$/;
+      const regex = /^[a-z_0-9]+$/;
 
-  if (this.template.name === '') {
-    this.nameError = 'Template name is required';
-  } else if (!regex.test(this.template.name)) {
-    this.nameError = 'Template name must contain only lowercase letters, numbers, and underscores.';
-  } else {
-    this.nameError = '';
-  }
-},
+      if (this.template.name === '') {
+        this.nameError = 'Template name is required';
+      } else if (!regex.test(this.template.name)) {
+        this.nameError = 'Template name must contain only lowercase letters, numbers, and underscores.';
+      } else {
+        this.nameError = '';
+      }
+    },
 
     async deleteTemplate(template_name) {
-      this.showConfirmPopup = false; // Close the confirmation popup if it's open
+      this.showConfirmPopup = false;
 
       const toast = useToast();
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('access_token');
 
       try {
         this.tableLoading = true;
@@ -878,7 +806,7 @@ validateTemplateName() {
       }
       finally {
         this.tableLoading = false;
-        this.deleteTemplateName = ''; // Clear the template name after deletion
+        this.deleteTemplateName = '';
       }
 
     },
@@ -908,7 +836,12 @@ validateTemplateName() {
       this.nameError = '';
       this.loading = false;
       this.preview_data = '';
-
+      // Clear the prompt text when closing the form
+      this.promptText = '';
+      this.placeholderList = '';
+      this.audienceDescription = '';
+      this.selectedTone = 'Professional';
+      this.selectedLength = 'short';
     },
 
     closePreview() {
@@ -934,7 +867,7 @@ validateTemplateName() {
       formData.append('file', this.selectedFile);
 
       try {
-        const token = localStorage.getItem("token"); // Adjust based on your auth storage
+        const token = localStorage.getItem("access_token");
         const response = await axios.post(`${this.apiUrl}/resumable-upload/`, formData, {
           headers: {
             "Authorization": `Bearer ${token}`,
@@ -1000,10 +933,6 @@ validateTemplateName() {
       this.validateTemplateName();
     },
 
-
-
-
-
     'bodyComponent.text'(newText) {
       this.updateVariablesFromText(newText);
       this.validateTemplateText(newText);
@@ -1021,7 +950,6 @@ validateTemplateName() {
       this.showSelectionPopup = false;
     },
 
-    // Watch any changes in template.components and update preview_data
     'template.components': {
       deep: true,
       handler(newComponents) {
@@ -1029,7 +957,6 @@ validateTemplateName() {
         this.preview_data = this.generateTemplatePreview(newComponents);
       }
     },
-    // Watch for changes in form inputs and update template.components dynamically
     variables: {
       deep: true,
       handler() {
@@ -1040,6 +967,7 @@ validateTemplateName() {
       deep: true,
       handler() {
         this.updateTemplateComponents();
+    
       }
     },
     headerComponent: {
@@ -1071,6 +999,7 @@ validateTemplateName() {
 };
 </script>
 
+
 <style scoped>
 .message {
   font-size: small;
@@ -1090,9 +1019,6 @@ validateTemplateName() {
   overflow: hidden;
 
 }
-
-
-
 
 /* Custom Scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
@@ -1119,183 +1045,17 @@ validateTemplateName() {
 .quill-editor-wrapper .ql-container {
   display: flex;
   flex-direction: column-reverse;
-  /* This is the key property! */
-  /* You might need to adjust height or other styles based on your layout */
   min-height: 200px;
-  /* Example: ensure the editor has some height */
   border: 1px solid #ccc;
-  /* Restore border if it gets lost with flexbox */
 }
 
 /* Optional: Adjust spacing or appearance */
 .quill-editor-wrapper .ql-toolbar {
   border-top: 1px solid #ccc;
-  /* Add a top border to the toolbar */
   border-bottom: none;
-  /* Remove default bottom border if it exists */
 }
 
 .quill-editor-wrapper .ql-editor {
-  /* Ensure the editor area expands to fill available space */
   flex-grow: 1;
 }
-
-
 </style>
-
-<!-- <style scoped>
-
-.error {
-  border-color: red;
-}
-
-.error-message {
-  color: red;
-  font-size: 0.875em;
-  margin-top: 0.5em;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-th,
-td {
-  border: 1px solid #ddd;
-  padding: 8px;
-}
-
-th {
-  background-color: #f2f2f2;
-}
-
-.CreateTemplateContainer {
-  background-color: #f5f6fa;
-  border-radius: 12px;
-  width: 100%;
-  max-width: 1100px;
-  padding: 20px;
-  display: flex;
-  margin-bottom: 20px;
-  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-}
-
-.CreateTemplateContainer button {
-  margin-left: 805px;
-}
-
-.templateList_container {
-  background-color: #f5f6fa;
-  border-radius: 12px 12px;
-  width: 100%;
-  padding: 20px;
-  margin-bottom: 20px;
-  max-width: 1100px;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-}
-
-.templateList-table {
-  width: 100%;
-  border-radius: 12px 12px;
-  border-collapse: collapse;
-  overflow-x: auto;
-  display: block;
-  max-height: 400px;
-}
-
-th {
-  padding: 20px 43px;
-  text-align: left;
-  border-collapse: collapse;
-  border: 1px solid #ddd;
-}
-
-.templateList-table td {
-  border: 1px solid #ddd;
-  padding: 20px;
-  text-align: left;
-  border-collapse: collapse;
-}
-
-.templateList-table thead th {
-  position: sticky;
-  top: 0;
-  background-color: #dddddd;
-  border-collapse: collapse;
-  border: 1px solid #ddd;
-}
-
-.templateList-table tbody {
-  background-color: white;
-}
-
-/* Popup Styles */
-.popup-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 9999;
-}
-
-.popup-content {
-  background-color: white;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-  max-width: 400px;
-  width: 100%;
-}
-
-.template-type-options {
-  display: flex;
-  justify-content: space-between;
-  gap: 20px;
-}
-
-.template-type-options button {
-  flex: 1;
-  padding: 10px;
-  border: none;
-  background-color: #075e54;
-  color: white;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-.template-type-options button:hover {
-  background-color: #075e54;
-}
-
-.discard-button {
-  margin-top: 20px;
-  background-color: #ff4d4d;
-  color: white;
-  border: none;
-  padding: 10px;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-.submit-button {
-  background-color: 5;
-  color: white;
-  border: none;
-  padding: 10px;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-.submit-button:hover {
-  background-color: #218838;
-}
-</style>  -->

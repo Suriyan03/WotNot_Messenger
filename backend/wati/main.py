@@ -53,13 +53,18 @@ app.include_router(woocommerce.router)
 app.include_router(integration.router)
 app.include_router(analytics.router)
 
-# Defining origins for CORS
+# In your main.py or user.py where CORSMiddleware is defined:
 
+origins = [
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",  # Frontend port variants
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",  # Common alternative dev ports
+]
 
-# CORS middleware configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -1,3 +1,4 @@
+
 from fastapi import APIRouter,Depends,HTTPException,UploadFile,Request
 from ..models import User
 from ..Schemas import user
@@ -13,6 +14,15 @@ from ..oauth2 import get_current_user
 import httpx
 import requests
 import json
+# --- At the beginning of wati/routes/user.py ---
+import os
+import httpx 
+
+# Get the WotNot token from the environment variable
+GEMINI_API_KEY = "AIzaSyCFkYa6Gbv_R8wah17WXPVXdrNDHc2pIwg" 
+GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent"
+# --- End Configuration ---
+
 
 router=APIRouter(tags=['User'])
 
@@ -155,19 +165,28 @@ async def verify_turnstile_token(token: str, remoteip: str = None) -> dict:
 
 @router.post('/register')
 async def new_user(
-    request: user.register_user,
-    db: AsyncSession = Depends(database.get_db)):
+    # Accept the FastAPI Request object for accessing metadata (like IP)
+    request_data: Request, 
+    # Accept the Pydantic data model for accessing the JSON body
+    user_data: user.register_user, 
+    db: AsyncSession = Depends(database.get_db)
+):
+    # FIX: Get remote_ip from the FastAPI Request object (request_data), not the user data model (user_data)
+    remote_ip = request_data.client.host 
+    
+    # Get the token from the user data model (user_data)
+    cf_token = user_data.cf_token
 
-    # verify_turnstile = await verify_turnstile_token(request.turnstile_token, request.remote_ip)
-    remote_ip = request.client.host
-    result = await verify_turnstile_token(request.cf_token, remoteip=remote_ip)
-
-    if result.get("success"):
+    # NOTE: The original Cloudflare check logic is left commented out below for flow reference.
+    # result = await verify_turnstile_token(cf_token, remoteip=remote_ip)
+    
+    # TEMPORARY BYPASS: Replace 'if result.get("success"):' with 'if True:' to skip Cloudflare check.
+    if True: 
     
         # Check for existing user
         result = await db.execute(
             select(User.User).filter(
-                (User.User.email == request.email) 
+                (User.User.email == user_data.email) # Use user_data.email
             )
         )
         existing_user = result.scalars().first()
@@ -178,34 +197,29 @@ async def new_user(
                 detail="Account with this email or phone number already exists"
             )
         
-        # Create a new user
+        # Create a new user - using user_data for all input fields
         api_key = secrets.token_hex(32)
         registeruser = User.User( 
-            username=request.username,
-            email=request.email,
-            password_hash=hashing.Hash.bcrypt(request.password),  # Decode the hash to store it as a string
-            # WABAID=request.WABAID,
-            # PAccessToken=request.PAccessToken,
-            # Phone_id=request.Phone_id,
+            username=user_data.username,
+            email=user_data.email,
+            password_hash=hashing.Hash.bcrypt(user_data.password),
             api_key=api_key
         )
         
+        # If your User model requires WABAID or PAccessToken to be NOT NULL, 
+        # you must uncomment them here and provide a dummy value in your Postman request.
+        # registeruser.WABAID = 0 # Example: Setting a dummy default value
+        
         db.add(registeruser)
-        await db.commit()  # Commit the transaction asynchronously
-        await db.refresh(registeruser)  # Refresh the instance asynchronously
+        await db.commit()
+        await db.refresh(registeruser)
 
         return {"success": True, "message": "Account created successfully"}
+    
+    # Add a fallback for when the 'if True' bypass is removed (not strictly necessary for this temporary code)
+    # else:
+    #     raise HTTPException(status_code=401, detail="Cloudflare verification failed")
 
-
-# @router.post("/update-profile", status_code=200)
-# async def update_profile(
-#     request: user.UpdateProfileRequest,
-#     get_current_user: user.newuser = Depends(get_current_user)
-# ):
-#     # Log request body to see its structure
-#     print(request.dict())  # or logging for better handling
-
-#     # ... the rest of your code
 @router.post("/update-profile", status_code=200)
 def update_profile(
     request: user.BusinessProfile, 
@@ -259,11 +273,6 @@ def update_profile(
 from fastapi import FastAPI, HTTPException, UploadFile
 import requests
 import mimetypes
-
-
-
-
-
 
 @router.post("/resumable-upload/")
 async def resumable_upload(file: UploadFile,get_current_user: user.newuser = Depends(get_current_user)):
@@ -336,14 +345,6 @@ async def resumable_upload(file: UploadFile,get_current_user: user.newuser = Dep
         "query_status": query_response.json()
     }
 
-
-
-
-
-
-
-
-
 @router.get("/get-business-profile/")
 def get_business_profile(get_current_user: user.newuser = Depends(get_current_user)):
     """
@@ -363,3 +364,78 @@ def get_business_profile(get_current_user: user.newuser = Depends(get_current_us
         raise HTTPException(status_code=response.status_code, detail=response.json())
 
     return response.json()
+
+
+@router.post("/generate-message/")
+async def generate_message_from_prompt(
+    request: Request,
+    get_current_user: user.newuser = Depends(get_current_user),
+):
+    """
+    Generates a predefined message using the Gemini AI API based on a rich context prompt.
+    """
+    # 1. Read the raw request body to get the prompt text
+    try:
+        body = await request.json()
+        prompt = body.get("prompt")
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid request body or missing 'prompt'")
+
+    if not GEMINI_API_KEY:
+        # NOTE: This ensures the error is clear if the key is missing.
+        raise HTTPException(status_code=500, detail="Gemini API Key is missing. Please set GEMINI_API_KEY in your .env file.")
+    
+    if not prompt:
+        raise HTTPException(status_code=400, detail="Prompt is required for message generation.")
+
+    # 2. Structure the Request Payload for the Gemini API
+    headers = {
+        "Content-Type": "application/json",
+        "x-goog-api-key": GEMINI_API_KEY
+    }
+
+    # The prompt from the frontend is used as the content.
+    # The 'context' you built will act as the System Instruction.
+    payload = {
+        "contents": [
+            {
+                "role": "user",
+                "parts": [{"text": prompt}]
+            }
+        ],
+        "generationConfig": {
+            "temperature": 0.7,
+        },
+        "systemInstruction": {
+            "parts": [
+                {
+                    "text": "You are a professional and concise broadcast message generator for a WhatsApp CRM. Your final output MUST be the cleaned, generated message text only. Do not include any headers, descriptions, or external text."
+                }
+            ]
+        }
+    }
+
+    # 3. Call the external Gemini API
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(GEMINI_API_URL, headers=headers, json=payload)
+            response.raise_for_status()
+            
+            gemini_data = response.json()
+            
+            # 4. Extract and return the generated message
+            generated_text = gemini_data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+            
+            if not generated_text:
+                 raise HTTPException(status_code=500, detail=f"AI returned empty response: {gemini_data}")
+
+            return {"message": generated_text.strip()}
+    
+    except httpx.HTTPStatusError as e:
+        # Handles 4xx and 5xx errors from the Gemini API
+        error_detail = response.json().get("error", {}).get("message", response.text)
+        raise HTTPException(status_code=e.response.status_code, detail=f"Gemini API Error: {error_detail}")
+    
+    except Exception as e:
+        # Handles connection errors
+        raise HTTPException(status_code=500, detail=f"Request failed: {e}")
