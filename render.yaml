@@ -40,6 +40,7 @@ services:
     buildCommand: "npm install && npm run build"
     
     # The directory where Vue places the final static files to be served
+    # This MUST be relative to the rootDir (./frontend/my-vue-app)
     publishPath: ./dist
     
     # This environment variable tells the compiled Vue app where the backend is.
