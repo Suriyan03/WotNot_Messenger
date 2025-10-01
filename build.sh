@@ -1,31 +1,53 @@
-#!/usr/bin/env bash
-# Exit immediately if a command exits with a non-zero status
-set -e
+# This configuration defines two entirely separate services:
+# 1. A dynamic Web Service (FastAPI backend).
+# 2. A Static Site (Vue.js frontend) that proxies API calls to the backend.
 
-echo "--- Installing Node.js and Frontend Dependencies ---"
-
-# 1. Install Node.js (required to run npm)
-# We assume the Node version required by the Vue project is compatible with what Render provides.
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" 
-nvm install 18 # Install a stable LTS version of Node.js
-
-# 2. Build the Vue Frontend Application
-# Run npm install and npm run build inside the frontend/my-vue-app directory
-cd frontend/my-vue-app
-npm install
-npm run build
-
-# 3. Move the compiled static assets into the backend's static file location (or root)
-# This assumes your backend serves static content from a standard location, 
-# or you can adjust your backend config to serve the 'dist' folder.
-# For simplicity, we just move the compiled files up.
-cd ../..
-# Optional: if you need to copy assets, add them here.
-
-echo "--- Installing Python Backend Dependencies ---"
-# 4. Install Python Dependencies
-pip install -r backend/requirements.txt
-
-echo "--- Build Process Complete ---"
+services:
+  # ----------------------------------------------------
+  # 1. DYNAMIC WEB SERVICE (FastAPI Backend)
+  # ----------------------------------------------------
+  - type: web
+    name: wotnot-backend
+    
+    # Python code is here
+    rootDir: ./backend
+    
+    env: python
+    
+    # Install dependencies
+    buildCommand: "pip install -r requirements.txt"
+    
+    # Start command for Uvicorn
+    startCommand: "uvicorn wati.main:app --host 0.0.0.0 --port $PORT"
+    
+    # IMPORTANT: The staticPublishPath is REMOVED from the dynamic service
+    
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.3 
+      - key: GEMINI_API_KEY
+        sync: false 
+      - key: DATABASE_URL 
+        sync: false 
+        
+  # ----------------------------------------------------
+  # 2. STATIC SITE SERVICE (Vue.js Frontend)
+  # ----------------------------------------------------
+  - type: static
+    name: wotnot-frontend
+    
+    # Root directory for the Vue project (where package.json lives)
+    rootDir: ./frontend/my-vue-app 
+    
+    # Command to install Node modules and build the Vue application
+    buildCommand: "npm install && npm run build"
+    
+    # The directory where Vue places the final static files
+    publishPath: ./dist
+    
+    # Environment Variables for the Frontend
+    envVars:
+      # Use a relative path, and Render will automatically proxy
+      # this to the wotnot-backend service URL.
+      - key: VUE_APP_API_URL 
+        value: /api
