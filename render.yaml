@@ -1,0 +1,54 @@
+# This file defines the two services needed for your full-stack application:
+# 1. The Python Backend (Web Service)
+# 2. The Vue Frontend (Static Site)
+
+services:
+  # ----------------------------------------------------
+  # 1. BACKEND SERVICE (FastAPI/Uvicorn)
+  # ----------------------------------------------------
+  - type: web
+    name: wotnot-backend
+    
+    # Render will look inside the './backend' folder relative to the wotnot root
+    rootDir: ./backend
+    
+    # Environment and Python version
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    
+    # This command starts your server. Must use host '0.0.0.0' for Render.
+    startCommand: "uvicorn wati.main:app --host 0.0.0.0 --port $PORT"
+    
+    # Environment Variables - You must set these values securely in the Render dashboard
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.3 # Match the version specified in your README
+      - key: GEMINI_API_KEY
+        sync: false # Set this value: AIzaSyCFkYa6Gbv_R8wah17WXPVXdrNDHc2pIwg
+      
+      # The sensitive database URL. Must be set securely.
+      - key: DATABASE_URL 
+        sync: false 
+      
+      # NOTE: VUE_APP_API_URL is set dynamically to the Render backend URL 
+      # during the build process, which will be faster than Ngrok.
+
+  # ----------------------------------------------------
+  # 2. FRONTEND SERVICE (Vue.js Static Site)
+  # ----------------------------------------------------
+  - type: static
+    name: wotnot-frontend
+    
+    # Path to the directory containing your package.json
+    rootDir: ./frontend/my-vue-app 
+    
+    # Command to compile the Vue application (npm install and then npm run build)
+    buildCommand: "npm install && npm run build"
+    
+    # The directory where Vue places the final static files
+    publishPath: ./dist
+    
+    # Environment Variables (Render injects these into the build)
+    envVars:
+      - key: VUE_APP_API_URL
+        value: /api # Use a relative path for Render proxying (simplest deployment)
